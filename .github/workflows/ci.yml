@@ -1,8 +1,19 @@
-name: CI
+name: Reusable CI
+
 on:
   pull_request:
   push:
     branches: [ main, master ]
+  workflow_call:
+    inputs:
+      node-version:
+        required: false
+        type: string
+        default: 'lts/*'
+      python-version:
+        required: false
+        type: string
+        default: '3.x'
 
 jobs:
   build-test:
@@ -11,12 +22,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Python
+      # Python (conditional)
       - name: Set up Python
         if: ${{ hashFiles('requirements.txt') != '' || hashFiles('pyproject.toml') != '' }}
         uses: actions/setup-python@v5
         with:
-          python-version: '3.x'
+          python-version: ${{ inputs.python-version }}
       - name: Python deps (requirements.txt)
         if: ${{ hashFiles('requirements.txt') != '' }}
         run: python -m pip install -r requirements.txt
@@ -27,12 +38,12 @@ jobs:
         if: ${{ hashFiles('tests/**') != '' }}
         run: pytest -q || echo "No pytest configured; skipping."
 
-      # Node
+      # Node (conditional)
       - name: Set up Node
         if: ${{ hashFiles('package.json') != '' }}
         uses: actions/setup-node@v4
         with:
-          node-version: 'lts/*'
+          node-version: ${{ inputs['node-version'] }}
       - name: Node install
         if: ${{ hashFiles('package.json') != '' }}
         run: npm ci || npm install
