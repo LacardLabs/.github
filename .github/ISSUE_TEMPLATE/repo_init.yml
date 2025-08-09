@@ -1,0 +1,14 @@
+name: Initialize repository
+description: One-time setup checklist for a new repo in lacard-labs
+labels: [chore]
+body:
+  - type: checkboxes
+    id: init
+    attributes:
+      label: Bootstrap tasks
+      options:
+        - label: Add caller workflow at `.github/workflows/ci.yml` that uses `lacard-labs/.github` reusable CI
+        - label: Add `CODEOWNERS` with @SarahLacard (and others if needed)
+        - label: Add README with CI badge (optional)
+        - label: Open first Feature issue (uses org template)
+        - label: Create branch protection (require 1 review + passing checks)
