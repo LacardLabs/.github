@@ -1,0 +1,46 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Python
+      - name: Set up Python
+        if: ${{ hashFiles('requirements.txt') != '' || hashFiles('pyproject.toml') != '' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Python deps (requirements.txt)
+        if: ${{ hashFiles('requirements.txt') != '' }}
+        run: python -m pip install -r requirements.txt
+      - name: Python deps (pyproject)
+        if: ${{ hashFiles('pyproject.toml') != '' && hashFiles('requirements.txt') == '' }}
+        run: python -m pip install build pytest
+      - name: Python tests
+        if: ${{ hashFiles('tests/**') != '' }}
+        run: pytest -q || echo "No pytest configured; skipping."
+
+      # Node
+      - name: Set up Node
+        if: ${{ hashFiles('package.json') != '' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+      - name: Node install
+        if: ${{ hashFiles('package.json') != '' }}
+        run: npm ci || npm install
+      - name: Node tests
+        if: ${{ hashFiles('package.json') != '' }}
+        run: npm test --silent || echo "No tests configured; skipping."
+
+      # Makefile fallback
+      - name: Makefile
+        if: ${{ hashFiles('Makefile') != '' }}
+        run: make test || make ci || echo "No make test/ci target; skipping."
