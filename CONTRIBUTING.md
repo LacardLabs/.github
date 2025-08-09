@@ -17,3 +17,6 @@ Write directly to Sarah in PRs and feature issues:
 
 ## Diagrams
 If using Mermaid, commit files under `docs/diagrams/` (e.g., `container.mmd`, `component.mmd`) and link them in the PR. Avoid embedding code fences in templates.
+
+## Other Info
+See `.github/docs/reusable-ci.md` for wiring the org-wide CI into this repo.
