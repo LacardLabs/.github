@@ -37,8 +37,8 @@ jobs:
       - name: Python tests
         if: ${{ hashFiles('tests/**') != '' }}
         run: |
-          pytest -q
-          status=$?
+          status=0
+          pytest -q || status=$?
           if [ "$status" -eq 5 ]; then
             echo "No tests collected; skipping."
             exit 0
