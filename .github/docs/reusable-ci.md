@@ -41,5 +41,11 @@
 ## Notes
 
 - The shared CI runs Python steps only if it detects `requirements.txt` or `pyproject.toml`; Node steps only if `package.json` exists; Makefile fallback if `Makefile` exists.
+- For `pyproject.toml`-managed projects the workflow installs your package (preferring the `test` extra via `pip install ".[test]"` when present, otherwise `pip install .`).
+- Declare test extras inside `[project.optional-dependencies]` in `pyproject.toml`, for example:
+  ```toml
+  [project.optional-dependencies]
+  test = ["pytest", "requests"]
+  ```
 - You can override tool versions via the `with:` block in the caller.
 - CODEOWNERS is per-repo; add it to each project where you want enforced reviews.

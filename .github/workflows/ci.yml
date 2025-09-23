@@ -33,7 +33,7 @@ jobs:
         run: python -m pip install -r requirements.txt
       - name: Python deps (pyproject)
         if: ${{ hashFiles('pyproject.toml') != '' && hashFiles('requirements.txt') == '' }}
-        run: python -m pip install build pytest
+        run: python -m pip install ".[test]" || python -m pip install .
       - name: Python tests
         if: ${{ hashFiles('tests/**') != '' }}
         run: pytest -q || echo "No pytest configured; skipping."
