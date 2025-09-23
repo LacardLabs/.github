@@ -46,7 +46,7 @@ jobs:
           node-version: ${{ inputs['node-version'] }}
       - name: Detect npm test script
         if: ${{ hashFiles('package.json') != '' }}
-        id: node-test-script
+        id: node_test_script
         shell: bash
         run: |
           set +e
@@ -57,13 +57,13 @@ jobs:
             echo "Detected npm test script: $test_script"
           else
             echo "has-test=false" >> "$GITHUB_OUTPUT"
-            echo "No npm test script detected; skipping npm install and tests."
+            echo "No npm test script detected; skipping npm tests."
           fi
       - name: Node install
-        if: ${{ hashFiles('package.json') != '' && steps['node-test-script'].outputs['has-test'] == 'true' }}
+        if: ${{ hashFiles('package.json') != '' }}
         run: npm ci || npm install
       - name: Node tests
-        if: ${{ hashFiles('package.json') != '' && steps['node-test-script'].outputs['has-test'] == 'true' }}
+        if: ${{ hashFiles('package.json') != '' && steps.node_test_script.outputs['has-test'] == 'true' }}
         shell: bash
         run: |
           set +e
