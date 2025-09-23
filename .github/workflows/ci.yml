@@ -65,20 +65,22 @@ jobs:
             return $status
           }
 
-          if run_target test; then
-            exit 0
-          fi
-
+          run_target test
           test_status=$?
           test_output="$MAKE_OUTPUT"
 
-          if echo "$test_output" | grep -qiE "no rule to make target"; then
-            if run_target ci; then
-              exit 0
-            fi
+          if [ "$test_status" -eq 0 ]; then
+            exit 0
+          fi
 
+          if echo "$test_output" | grep -qiE "no rule to make target"; then
+            run_target ci
             ci_status=$?
             ci_output="$MAKE_OUTPUT"
+
+            if [ "$ci_status" -eq 0 ]; then
+              exit 0
+            fi
 
             if echo "$ci_output" | grep -qiE "no rule to make target"; then
               echo "No make test/ci target; skipping."
