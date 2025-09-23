@@ -36,7 +36,14 @@ jobs:
         run: python -m pip install build pytest
       - name: Python tests
         if: ${{ hashFiles('tests/**') != '' }}
-        run: pytest -q || echo "No pytest configured; skipping."
+        run: |
+          pytest -q
+          status=$?
+          if [ "$status" -eq 5 ]; then
+            echo "No tests collected; skipping."
+            exit 0
+          fi
+          exit $status
 
       # Node (conditional)
       - name: Set up Node
