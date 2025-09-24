@@ -33,10 +33,19 @@ jobs:
         run: python -m pip install -r requirements.txt
       - name: Python deps (pyproject)
         if: ${{ hashFiles('pyproject.toml') != '' && hashFiles('requirements.txt') == '' }}
-        run: python -m pip install ".[test]" || python -m pip install .
+        run: |
+          python -m pip install ".[test]" || python -m pip install .
+          python -m pip install pytest
       - name: Python tests
         if: ${{ hashFiles('tests/**') != '' }}
-        run: pytest -q || echo "No pytest configured; skipping."
+        run: |
+          status=0
+          pytest -q || status=$?
+          if [ "$status" -eq 5 ]; then
+            echo "No tests collected; skipping."
+            exit 0
+          fi
+          exit $status
 
       # Node (conditional)
       - name: Set up Node
@@ -44,14 +53,79 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ inputs['node-version'] }}
+      - name: Detect npm test script
+        if: ${{ hashFiles('package.json') != '' }}
+        id: node_test_script
+        shell: bash
+        run: |
+          set +e
+          test_script=$(node -pe "require('./package.json').scripts?.test" 2>/dev/null || true)
+          set -e
+          if [ -n "$test_script" ] && [ "$test_script" != "undefined" ]; then
+            echo "has-test=true" >> "$GITHUB_OUTPUT"
+            echo "Detected npm test script: $test_script"
+          else
+            echo "has-test=false" >> "$GITHUB_OUTPUT"
+            echo "No npm test script detected; skipping npm tests."
+          fi
       - name: Node install
         if: ${{ hashFiles('package.json') != '' }}
         run: npm ci || npm install
       - name: Node tests
-        if: ${{ hashFiles('package.json') != '' }}
-        run: npm test --silent || echo "No tests configured; skipping."
+        if: ${{ hashFiles('package.json') != '' && steps.node_test_script.outputs['has-test'] == 'true' }}
+        shell: bash
+        run: |
+          set +e
+          output=$(npm test --silent 2>&1)
+          status=$?
+          set -e
+          printf '%s\n' "$output"
+          if [ "$status" -eq 0 ]; then
+            exit 0
+          fi
+          if echo "$output" | grep -qi "missing script: test"; then
+            echo "npm test script missing; treating as skip."
+            exit 0
+          fi
+          exit "$status"
 
       # Makefile fallback
       - name: Makefile
         if: ${{ hashFiles('Makefile') != '' }}
-        run: make test || make ci || echo "No make test/ci target; skipping."
+        run: |
+          set -o pipefail
+
+          run_target() {
+            local target="$1"
+            MAKE_OUTPUT=$(make "$target" 2>&1)
+            local status=$?
+            printf '%s\n' "$MAKE_OUTPUT"
+            return $status
+          }
+
+          run_target test
+          test_status=$?
+          test_output="$MAKE_OUTPUT"
+
+          if [ "$test_status" -eq 0 ]; then
+            exit 0
+          fi
+
+          if echo "$test_output" | grep -qiE "no rule to make target"; then
+            run_target ci
+            ci_status=$?
+            ci_output="$MAKE_OUTPUT"
+
+            if [ "$ci_status" -eq 0 ]; then
+              exit 0
+            fi
+
+            if echo "$ci_output" | grep -qiE "no rule to make target"; then
+              echo "No make test/ci target; skipping."
+              exit 0
+            fi
+
+            exit $ci_status
+          fi
+
+          exit $test_status
