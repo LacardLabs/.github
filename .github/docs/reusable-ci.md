@@ -40,7 +40,10 @@
 
 ## Notes
 
-- The shared CI runs Python steps only if it detects `requirements.txt` or `pyproject.toml`; Node steps only if `package.json` exists; Makefile fallback if `Makefile` exists.
+- The shared CI automatically scopes language steps:
+  - Python setup runs only when `requirements.txt` or `pyproject.toml` is present. Pytest is executed only if anything exists under `tests/**`.
+  - Node setup runs only when `package.json` exists. The workflow inspects the repo for an `npm test` script and skips the test step when it is missing.
+  - A Makefile fallback runs `make test`, then `make ci` if the test target is absent. Missing targets are treated as skips.
 - For `pyproject.toml`-managed projects the workflow installs your package (preferring the `test` extra via `pip install ".[test]"` when present, otherwise `pip install .`).
 - Declare test extras inside `[project.optional-dependencies]` in `pyproject.toml`, for example:
   ```toml
