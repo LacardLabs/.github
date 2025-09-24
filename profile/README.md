@@ -1,6 +1,6 @@
 # Hi there 👋
 
-Welcome to lacard-labs! This profile highlights the shared resources that help our community collaborate, learn, and ship great projects together.
+Welcome to Lacard Labs! This profile highlights the shared resources that help our community collaborate, learn, and ship great projects together.
 
 ## 🚀 What We’re Building
 
