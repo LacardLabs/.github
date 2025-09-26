@@ -69,5 +69,6 @@ jobs:
 - Node support caches `npm` installs and gracefully skips lint/test when scripts are missing.
 - Rust support assumes a standard Cargo layout and enforces `cargo fmt --check` before running tests.
 - CodeQL skips unsupported Rust analysis: Rust-only repos automatically disable CodeQL, while mixed-language projects filter the Rust footprint from the language list.
-- Make fallback (`make test` → `make ci`) only runs when no supported language footprint is detected and tests are enabled.
+- Make fallback (`make test` → `make ci`) only runs when no supported language footprint is detected and tests are enabled, and it
+  captures exit codes so missing targets skip while real failures halt the workflow.
 - SBOM upload only publishes for workflow calls and tag/release events to keep noise low during PR edits.
