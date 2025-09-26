@@ -15,7 +15,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Export org settings
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.ORG_REPORT_TOKEN }}
         run: python3 scripts/export_org_settings.py
       - name: Commit report if changed
         uses: stefanzweifel/git-auto-commit-action@v5
