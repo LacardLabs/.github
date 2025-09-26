@@ -23,6 +23,16 @@ on:
         required: false
         type: boolean
         default: false
+      python-version:
+        description: Python version to install when configuring the runtime
+        required: false
+        type: string
+        default: '3.12'
+      node-version:
+        description: Node.js version to install when configuring the runtime
+        required: false
+        type: string
+        default: 'lts/*'
   push:
     branches: [ main, master ]
     paths:
@@ -47,6 +57,8 @@ jobs:
       run_tests_enabled: ${{ steps.config.outputs.run_tests }}
       codeql_enabled: ${{ steps.features.outputs.codeql }}
       sbom_enabled: ${{ steps.config.outputs.sbom }}
+      python_version: ${{ steps.config.outputs.python_version }}
+      node_version: ${{ steps.config.outputs.node_version }}
     steps:
       - uses: actions/checkout@v4
       - name: Resolve configuration inputs
@@ -60,17 +72,23 @@ jobs:
             run_tests=$(jq -r '.inputs.run_tests // "true"' "$GITHUB_EVENT_PATH")
             codeql=$(jq -r '.inputs.codeql // "true"' "$GITHUB_EVENT_PATH")
             sbom=$(jq -r '.inputs.sbom // "false"' "$GITHUB_EVENT_PATH")
+            python_version=$(jq -r '.inputs."python-version" // "3.12"' "$GITHUB_EVENT_PATH")
+            node_version=$(jq -r '.inputs."node-version" // "lts/*"' "$GITHUB_EVENT_PATH")
           else
             language="none"
             run_tests="true"
             codeql="true"
             sbom="false"
+            python_version="3.12"
+            node_version="lts/*"
           fi
 
           printf 'language=%s\n' "$language" >> "$GITHUB_OUTPUT"
           printf 'run_tests=%s\n' "$run_tests" >> "$GITHUB_OUTPUT"
           printf 'codeql=%s\n' "$codeql" >> "$GITHUB_OUTPUT"
           printf 'sbom=%s\n' "$sbom" >> "$GITHUB_OUTPUT"
+          printf 'python_version=%s\n' "$python_version" >> "$GITHUB_OUTPUT"
+          printf 'node_version=%s\n' "$node_version" >> "$GITHUB_OUTPUT"
       - id: detect
         name: Detect languages
         env:
@@ -104,7 +122,7 @@ jobs:
           langs=()
           if [[ $python -eq 1 ]]; then langs+=(python); fi
           if [[ $node -eq 1 ]]; then langs+=(javascript); fi
-          if [[ $rust -eq 1 ]]; then langs+=(cpp); fi
+          if [[ $rust -eq 1 && ${#langs[@]} -eq 0 ]]; then langs+=(cpp); fi
           if [[ ${#langs[@]} -eq 0 ]]; then langs+=(python); fi
 
           {
@@ -143,7 +161,7 @@ jobs:
         if: ${{ needs.prepare.outputs.has_python == '1' }}
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: ${{ needs.prepare.outputs.python_version }}
 
       - name: Install Python dependencies
         if: ${{ steps.python_setup.conclusion == 'success' }}
@@ -179,7 +197,7 @@ jobs:
         if: ${{ needs.prepare.outputs.has_node == '1' }}
         uses: actions/setup-node@v4
         with:
-          node-version: 'lts/*'
+          node-version: ${{ needs.prepare.outputs.node_version }}
           cache: npm
 
       - name: Install Node dependencies
