@@ -45,7 +45,7 @@ jobs:
       codeql_languages: ${{ steps.detect.outputs.codeql_languages }}
       language_choice: ${{ steps.config.outputs.language }}
       run_tests_enabled: ${{ steps.config.outputs.run_tests }}
-      codeql_enabled: ${{ steps.config.outputs.codeql }}
+      codeql_enabled: ${{ steps.features.outputs.codeql }}
       sbom_enabled: ${{ steps.config.outputs.sbom }}
     steps:
       - uses: actions/checkout@v4
@@ -113,6 +113,23 @@ jobs:
             echo "has_rust=$rust"
             (IFS=","; echo "codeql_languages=${langs[*]}")
           } >> "$GITHUB_OUTPUT"
+
+      - name: Finalize feature toggles
+        id: features
+        shell: bash
+        env:
+          CODEQL_INPUT: ${{ steps.config.outputs.codeql }}
+          CODEQL_LANGS: ${{ steps.detect.outputs.codeql_languages }}
+        run: |
+          set -euo pipefail
+
+          codeql="$CODEQL_INPUT"
+          if [[ "$codeql" == "true" && "$CODEQL_LANGS" == "cpp" ]]; then
+            echo "CodeQL disabled: rust-only repository detected"
+            codeql="false"
+          fi
+
+          printf 'codeql=%s\n' "$codeql" >> "$GITHUB_OUTPUT"
 
   lint_test:
     name: Lint and test
