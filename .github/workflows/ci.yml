@@ -130,6 +130,9 @@ jobs:
           langs=()
           if [[ $python -eq 1 ]]; then langs+=(python); fi
           if [[ $node -eq 1 ]]; then langs+=(javascript); fi
+          # CodeQL treats Rust analysis as C/C++, so surface `cpp` only when
+          # Rust is the sole detected language. Mixed stacks skip the entry to
+          # avoid requesting unsupported analyses.
           if [[ $rust -eq 1 && ${#langs[@]} -eq 0 ]]; then langs+=(cpp); fi
           if [[ ${#langs[@]} -eq 0 ]]; then langs+=(python); fi
 
