@@ -33,6 +33,7 @@ Downstream jobs consume a handful of signals emitted by the `prepare` job. They 
 | Output | Description |
 | ------ | ----------- |
 | `has_python` / `has_node` / `has_rust` | Language footprints detected in the repository or via the `language` hint. |
+| `language_choice` | Normalized language hint after defaults (for example, resolves `none` for push/PR runs). |
 | `python_version` / `node_version` | Resolved toolchain versions, honoring provided inputs and defaulting to Python 3.12 / Node LTS. |
 | `codeql_languages` | Comma-delimited list of languages passed to CodeQL (defaults to `python` when nothing is detected). |
 | `codeql_enabled` | Whether CodeQL analysis will run after applying feature toggles. |
