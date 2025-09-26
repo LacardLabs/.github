@@ -21,5 +21,5 @@ jobs:
       - name: Commit report if changed
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: docs: refresh org settings report
+          commit_message: "docs: refresh org settings report"
           file_pattern: docs/org-settings.md
