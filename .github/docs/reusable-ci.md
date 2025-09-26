@@ -48,6 +48,7 @@ jobs:
 ## Notes
 
 - The reusable workflow also triggers on pushes/PRs within this repo so edits can be validated locally.
+- Direct pushes/PRs in this repo run with defaults (`language=none`, `run_tests=true`, `codeql=true`, `sbom=false`) so the workflow remains executable without workflow-call inputs.
 - Python support tests for `requirements.txt`, `pyproject.toml`, or `poetry.lock` before bootstrapping.
 - Node support caches `npm` installs and gracefully skips lint/test when scripts are missing.
 - Rust support assumes a standard Cargo layout and enforces `cargo fmt --check` before running tests.

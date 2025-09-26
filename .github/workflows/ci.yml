@@ -43,12 +43,38 @@ jobs:
       has_node: ${{ steps.detect.outputs.has_node }}
       has_rust: ${{ steps.detect.outputs.has_rust }}
       codeql_languages: ${{ steps.detect.outputs.codeql_languages }}
+      language_choice: ${{ steps.config.outputs.language }}
+      run_tests_enabled: ${{ steps.config.outputs.run_tests }}
+      codeql_enabled: ${{ steps.config.outputs.codeql }}
+      sbom_enabled: ${{ steps.config.outputs.sbom }}
     steps:
       - uses: actions/checkout@v4
+      - name: Resolve configuration inputs
+        id: config
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_call" ]]; then
+            language=$(jq -r '.inputs.language // "none"' "$GITHUB_EVENT_PATH")
+            run_tests=$(jq -r '.inputs.run_tests // "true"' "$GITHUB_EVENT_PATH")
+            codeql=$(jq -r '.inputs.codeql // "true"' "$GITHUB_EVENT_PATH")
+            sbom=$(jq -r '.inputs.sbom // "false"' "$GITHUB_EVENT_PATH")
+          else
+            language="none"
+            run_tests="true"
+            codeql="true"
+            sbom="false"
+          fi
+
+          printf 'language=%s\n' "$language" >> "$GITHUB_OUTPUT"
+          printf 'run_tests=%s\n' "$run_tests" >> "$GITHUB_OUTPUT"
+          printf 'codeql=%s\n' "$codeql" >> "$GITHUB_OUTPUT"
+          printf 'sbom=%s\n' "$sbom" >> "$GITHUB_OUTPUT"
       - id: detect
         name: Detect languages
         env:
-          LANGUAGE_INPUT: ${{ inputs.language }}
+          LANGUAGE_INPUT: ${{ steps.config.outputs.language }}
         shell: bash
         run: |
           set -euo pipefail
@@ -91,7 +117,7 @@ jobs:
   lint_test:
     name: Lint and test
     needs: prepare
-    if: ${{ inputs.run_tests }}
+    if: ${{ needs.prepare.outputs.run_tests_enabled == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -231,7 +257,7 @@ jobs:
 
   codeql:
     name: CodeQL
-    if: ${{ inputs.codeql }}
+    if: ${{ needs.prepare.outputs.codeql_enabled == 'true' }}
     needs: prepare
     runs-on: ubuntu-latest
     permissions:
@@ -248,7 +274,7 @@ jobs:
 
   sbom:
     name: SBOM
-    if: ${{ inputs.sbom }}
+    if: ${{ needs.prepare.outputs.sbom_enabled == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
