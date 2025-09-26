@@ -117,7 +117,6 @@ jobs:
   lint_test:
     name: Lint and test
     needs: prepare
-    if: ${{ needs.prepare.outputs.run_tests_enabled == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -145,7 +144,7 @@ jobs:
           fi
 
       - name: Run pytest
-        if: ${{ steps.python_setup.conclusion == 'success' }}
+        if: ${{ steps.python_setup.conclusion == 'success' && needs.prepare.outputs.run_tests_enabled == 'true' }}
         shell: bash
         run: |
           set +e
@@ -183,7 +182,7 @@ jobs:
         run: npm run --if-present lint
 
       - name: Node test
-        if: ${{ steps.node_setup.conclusion == 'success' }}
+        if: ${{ steps.node_setup.conclusion == 'success' && needs.prepare.outputs.run_tests_enabled == 'true' }}
         shell: bash
         run: npm run --if-present test
 
@@ -198,12 +197,12 @@ jobs:
         run: cargo fmt --all --check
 
       - name: Rust tests
-        if: ${{ steps.rust_setup.conclusion == 'success' }}
+        if: ${{ steps.rust_setup.conclusion == 'success' && needs.prepare.outputs.run_tests_enabled == 'true' }}
         shell: bash
         run: cargo test --all --locked
 
       - name: Make fallback
-        if: ${{ !(needs.prepare.outputs.has_python == '1' || needs.prepare.outputs.has_node == '1' || needs.prepare.outputs.has_rust == '1') }}
+        if: ${{ needs.prepare.outputs.run_tests_enabled == 'true' && !(needs.prepare.outputs.has_python == '1' || needs.prepare.outputs.has_node == '1' || needs.prepare.outputs.has_rust == '1') }}
         shell: bash
         run: |
           set -euo pipefail
@@ -233,21 +232,23 @@ jobs:
             return $status
           }
 
-          if run_target test; then
+          run_target test
+          status=$?
+          if [[ $status -eq 0 ]]; then
             exit 0
           fi
 
-          status=$?
           if [[ $status -ne 2 ]]; then
             echo "make test failed with status $status"
             exit $status
           fi
 
-          if run_target ci; then
+          run_target ci
+          status=$?
+          if [[ $status -eq 0 ]]; then
             exit 0
           fi
 
-          status=$?
           if [[ $status -ne 2 ]]; then
             echo "make ci failed with status $status"
             exit $status
