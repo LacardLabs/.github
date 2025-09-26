@@ -1,0 +1,25 @@
+name: Org Settings Report
+
+on:
+  schedule:
+    - cron: '15 5 * * *'
+  workflow_dispatch:
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Export org settings
+        # ORG_REPORT_TOKEN must be scoped for read:org and admin:org so gh api calls succeed.
+        env:
+          GH_TOKEN: ${{ secrets.ORG_REPORT_TOKEN }}
+        run: python3 scripts/export_org_settings.py
+      - name: Commit report if changed
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: docs: refresh org settings report
+          file_pattern: docs/org-settings.md
