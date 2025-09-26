@@ -27,7 +27,7 @@ This repository holds the shared configuration that keeps the lacard-labs organi
 | `.github/ISSUE_TEMPLATE/` | Organization-wide issue templates for bugs, features, and repository bootstrapping. |
 | `.github/pull_request_template.md` | Narrative pull request template referenced in the contributing guide. |
 | `.github/docs/reusable-ci.md` | Instructions for integrating the shared CI workflow into a project. |
-| `docs/org-settings.md` | Nightly snapshot of org security defaults and ruleset fetch status. |
+| `docs/org-settings.md` | Nightly snapshot of org security defaults and ruleset fetch status. Requires the `ORG_REPORT_TOKEN` secret for automation. |
 | `CONTRIBUTING.md` | Voice, workflow, and diagram guidelines for contributors. |
 | `SECURITY.md` | Contact details and expectations for vulnerability reports. |
 | `CODEOWNERS` | Review requirements for critical paths in this repository. |

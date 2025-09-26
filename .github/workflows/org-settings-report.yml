@@ -14,6 +14,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Export org settings
+        # ORG_REPORT_TOKEN must be scoped for read:org and admin:org so gh api calls succeed.
         env:
           GH_TOKEN: ${{ secrets.ORG_REPORT_TOKEN }}
         run: python3 scripts/export_org_settings.py

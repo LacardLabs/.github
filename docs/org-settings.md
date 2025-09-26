@@ -26,5 +26,5 @@ gh: This API operation needs the "admin:org" scope. To request it, run:  gh auth
 
 ## Updating this report
 
-Run `scripts/export_org_settings.py` locally (requires the GitHub CLI) or allow the scheduled workflow `org-settings-report.yml` to refresh this file nightly.
+Run `scripts/export_org_settings.py` locally (requires the GitHub CLI) or allow the scheduled workflow `org-settings-report.yml` to refresh this file nightly. The workflow authenticates with the `ORG_REPORT_TOKEN` secret, which must be a personal access token (or GitHub App token) scoped for `read:org` and `admin:org` so that rulesets export succeeds.
 
