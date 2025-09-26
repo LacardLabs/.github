@@ -1,131 +1,363 @@
 name: Reusable CI
 
 on:
-  pull_request:
-  push:
-    branches: [ main, master ]
   workflow_call:
     inputs:
-      node-version:
+      language:
+        description: Primary language hint (python|node|rust|none)
         required: false
         type: string
-        default: 'lts/*'
+        default: none
       python-version:
+        description: Python version to install when detected
         required: false
         type: string
-        default: '3.x'
+        default: ''
+      node-version:
+        description: Node.js version to install when detected
+        required: false
+        type: string
+        default: ''
+      run_tests:
+        description: Run unit/integration tests when available
+        required: false
+        type: boolean
+        default: true
+      codeql:
+        description: Enable CodeQL analysis when supported
+        required: false
+        type: boolean
+        default: true
+      sbom:
+        description: Emit CycloneDX SBOM artifact
+        required: false
+        type: boolean
+        default: false
+  push:
+    branches: [ main, master ]
+    paths:
+      - .github/workflows/ci.yml
+  pull_request:
+    paths:
+      - .github/workflows/ci.yml
+
+permissions:
+  contents: read
 
 jobs:
-  build-test:
+  prepare:
+    name: Detect stack
+    runs-on: ubuntu-latest
+    outputs:
+      has_python: ${{ steps.detect.outputs.has_python }}
+      has_node: ${{ steps.detect.outputs.has_node }}
+      has_rust: ${{ steps.detect.outputs.has_rust }}
+      codeql_languages: ${{ steps.detect.outputs.codeql_languages }}
+      language_choice: ${{ steps.config.outputs.language }}
+      run_tests_enabled: ${{ steps.config.outputs.run_tests }}
+      codeql_enabled: ${{ steps.features.outputs.codeql }}
+      sbom_enabled: ${{ steps.config.outputs.sbom }}
+      python_version: ${{ steps.config.outputs.python_version }}
+      node_version: ${{ steps.config.outputs.node_version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve configuration inputs
+        id: config
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_call" ]]; then
+            language=$(jq -r '.inputs.language // "none"' "$GITHUB_EVENT_PATH")
+            run_tests=$(jq -r '.inputs.run_tests // "true"' "$GITHUB_EVENT_PATH")
+            codeql=$(jq -r '.inputs.codeql // "true"' "$GITHUB_EVENT_PATH")
+            sbom=$(jq -r '.inputs.sbom // "false"' "$GITHUB_EVENT_PATH")
+            python_version=$(jq -r '.inputs["python-version"] // ""' "$GITHUB_EVENT_PATH")
+            node_version=$(jq -r '.inputs["node-version"] // ""' "$GITHUB_EVENT_PATH")
+          else
+            language="none"
+            run_tests="true"
+            codeql="true"
+            sbom="false"
+            python_version=""
+            node_version=""
+          fi
+
+          if [[ -z "$python_version" ]]; then
+            python_version="3.12"
+          fi
+
+          if [[ -z "$node_version" ]]; then
+            node_version="lts/*"
+          fi
+
+          printf 'language=%s\n' "$language" >> "$GITHUB_OUTPUT"
+          printf 'run_tests=%s\n' "$run_tests" >> "$GITHUB_OUTPUT"
+          printf 'codeql=%s\n' "$codeql" >> "$GITHUB_OUTPUT"
+          printf 'sbom=%s\n' "$sbom" >> "$GITHUB_OUTPUT"
+          printf 'python_version=%s\n' "$python_version" >> "$GITHUB_OUTPUT"
+          printf 'node_version=%s\n' "$node_version" >> "$GITHUB_OUTPUT"
+      - id: detect
+        name: Detect languages
+        env:
+          LANGUAGE_INPUT: ${{ steps.config.outputs.language }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python=0
+          node=0
+          rust=0
+
+          if [[ -f requirements.txt || -f pyproject.toml || -f poetry.lock ]]; then
+            python=1
+          fi
+          if [[ -f package.json || -f pnpm-lock.yaml || -f yarn.lock ]]; then
+            node=1
+          fi
+          if [[ -f Cargo.toml ]]; then
+            rust=1
+          fi
+
+          case "$LANGUAGE_INPUT" in
+            python) python=1 ;;
+            node) node=1 ;;
+            rust) rust=1 ;;
+            none|"" ) : ;;
+            *) echo "Unsupported language hint: $LANGUAGE_INPUT" >&2 ; exit 1 ;;
+          esac
+
+          langs=()
+          if [[ $python -eq 1 ]]; then langs+=(python); fi
+          if [[ $node -eq 1 ]]; then langs+=(javascript); fi
+          # CodeQL treats Rust analysis as C/C++, so surface `cpp` only when
+          # Rust is the sole detected language. Mixed stacks skip the entry to
+          # avoid requesting unsupported analyses.
+          if [[ $rust -eq 1 && ${#langs[@]} -eq 0 ]]; then langs+=(cpp); fi
+          if [[ ${#langs[@]} -eq 0 ]]; then langs+=(python); fi
+
+          {
+            echo "has_python=$python"
+            echo "has_node=$node"
+            echo "has_rust=$rust"
+            (IFS=","; echo "codeql_languages=${langs[*]}")
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Finalize feature toggles
+        id: features
+        shell: bash
+        env:
+          CODEQL_INPUT: ${{ steps.config.outputs.codeql }}
+          CODEQL_LANGS: ${{ steps.detect.outputs.codeql_languages }}
+        run: |
+          set -euo pipefail
+
+          codeql="$CODEQL_INPUT"
+          if [[ "$codeql" == "true" && "$CODEQL_LANGS" == "cpp" ]]; then
+            echo "CodeQL disabled: rust-only repository detected"
+            codeql="false"
+          fi
+
+          printf 'codeql=%s\n' "$codeql" >> "$GITHUB_OUTPUT"
+
+  lint_test:
+    name: Lint and test
+    needs: prepare
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # Python (conditional)
+      - name: Materialize inventory
+        if: ${{ hashFiles('Makefile') != '' && hashFiles('tools/materialize.py') != '' && hashFiles('tools/validate.py') != '' }}
+        shell: bash
+        run: make materialize
+
+      - name: Validate inventory
+        if: ${{ hashFiles('Makefile') != '' && hashFiles('tools/materialize.py') != '' && hashFiles('tools/validate.py') != '' }}
+        shell: bash
+        run: make validate
+
       - name: Set up Python
-        if: ${{ hashFiles('requirements.txt') != '' || hashFiles('pyproject.toml') != '' }}
+        id: python_setup
+        if: ${{ needs.prepare.outputs.has_python == '1' }}
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ inputs.python-version }}
-      - name: Python deps (requirements.txt)
-        if: ${{ hashFiles('requirements.txt') != '' }}
-        run: python -m pip install -r requirements.txt
-      - name: Python deps (pyproject)
-        if: ${{ hashFiles('pyproject.toml') != '' && hashFiles('requirements.txt') == '' }}
+          python-version: ${{ needs.prepare.outputs.python_version }}
+
+      - name: Install Python dependencies
+        if: ${{ steps.python_setup.conclusion == 'success' }}
+        shell: bash
         run: |
-          python -m pip install ".[test]" || python -m pip install .
-          python -m pip install pytest
-      - name: Python tests
-        if: ${{ hashFiles('tests/**') != '' }}
+          set -euo pipefail
+          python -m pip install -U pip
+          if [[ -f requirements.txt ]]; then
+            python -m pip install -r requirements.txt
+          elif [[ -f pyproject.toml ]]; then
+            python -m pip install '.[test]' || python -m pip install .
+          fi
+          if ! command -v pytest >/dev/null 2>&1; then
+            python -m pip install pytest
+          fi
+
+      - name: Run pytest
+        if: ${{ steps.python_setup.conclusion == 'success' && needs.prepare.outputs.run_tests_enabled == 'true' }}
+        shell: bash
         run: |
-          status=0
-          pytest -q || status=$?
-          if [ "$status" -eq 5 ]; then
-            echo "No tests collected; skipping."
+          set +e
+          pytest -q
+          status=$?
+          set -e
+          if [[ $status -eq 5 ]]; then
+            echo "Pytest collected no tests; marking as success."
             exit 0
           fi
           exit $status
 
-      # Node (conditional)
       - name: Set up Node
-        if: ${{ hashFiles('package.json') != '' }}
+        id: node_setup
+        if: ${{ needs.prepare.outputs.has_node == '1' }}
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ inputs['node-version'] }}
-      - name: Detect npm test script
-        if: ${{ hashFiles('package.json') != '' }}
-        id: node_test_script
-        shell: bash
-        run: |
-          set +e
-          test_script=$(node -pe "require('./package.json').scripts?.test" 2>/dev/null || true)
-          set -e
-          if [ -n "$test_script" ] && [ "$test_script" != "undefined" ]; then
-            echo "has-test=true" >> "$GITHUB_OUTPUT"
-            echo "Detected npm test script: $test_script"
-          else
-            echo "has-test=false" >> "$GITHUB_OUTPUT"
-            echo "No npm test script detected; skipping npm tests."
-          fi
-      - name: Node install
-        if: ${{ hashFiles('package.json') != '' }}
-        run: npm ci || npm install
-      - name: Node tests
-        if: ${{ hashFiles('package.json') != '' && steps.node_test_script.outputs['has-test'] == 'true' }}
-        shell: bash
-        run: |
-          set +e
-          output=$(npm test --silent 2>&1)
-          status=$?
-          set -e
-          printf '%s\n' "$output"
-          if [ "$status" -eq 0 ]; then
-            exit 0
-          fi
-          if echo "$output" | grep -qi "missing script: test"; then
-            echo "npm test script missing; treating as skip."
-            exit 0
-          fi
-          exit "$status"
+          node-version: ${{ needs.prepare.outputs.node_version }}
+          cache: npm
 
-      # Makefile fallback
-      - name: Makefile
-        if: ${{ hashFiles('Makefile') != '' }}
+      - name: Install Node dependencies
+        if: ${{ steps.node_setup.conclusion == 'success' }}
+        shell: bash
         run: |
-          set -o pipefail
+          set -euo pipefail
+          if [[ -f package-lock.json ]]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      - name: Node lint
+        if: ${{ steps.node_setup.conclusion == 'success' }}
+        shell: bash
+        run: npm run --if-present lint
+
+      - name: Node test
+        if: ${{ steps.node_setup.conclusion == 'success' && needs.prepare.outputs.run_tests_enabled == 'true' }}
+        shell: bash
+        run: npm run --if-present test
+
+      - name: Set up Rust
+        id: rust_setup
+        if: ${{ needs.prepare.outputs.has_rust == '1' }}
+        uses: LacardLabs/.github/actions/setup-rust@839ec6c968fb7109fe00e958c65f58c76fefc461
+        with:
+          toolchain: stable
+          components: clippy,rustfmt
+
+      - name: Cache cargo artifacts
+        if: ${{ steps.rust_setup.conclusion == 'success' }}
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Rust fmt
+        if: ${{ steps.rust_setup.conclusion == 'success' }}
+        shell: bash
+        run: cargo fmt --all --check
+
+      - name: Rust tests
+        if: ${{ steps.rust_setup.conclusion == 'success' && needs.prepare.outputs.run_tests_enabled == 'true' }}
+        shell: bash
+        run: cargo test --all --locked
+
+      - name: Make fallback
+        if: ${{ needs.prepare.outputs.run_tests_enabled == 'true' && !(needs.prepare.outputs.has_python == '1' || needs.prepare.outputs.has_node == '1' || needs.prepare.outputs.has_rust == '1') }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ ! -f Makefile ]]; then
+            echo "No make targets detected; skipping"
+            exit 0
+          fi
 
           run_target() {
             local target="$1"
-            MAKE_OUTPUT=$(make "$target" 2>&1)
+            set +e
+            local output
+            output=$(make "$target" 2>&1)
             local status=$?
-            printf '%s\n' "$MAKE_OUTPUT"
+            set -e
+            printf '%s\n' "$output"
+
+            if [[ $status -eq 0 ]]; then
+              return 0
+            fi
+
+            if [[ $status -eq 2 && "$output" == *"No rule to make target"* ]]; then
+              return 2
+            fi
+
             return $status
           }
 
           run_target test
-          test_status=$?
-          test_output="$MAKE_OUTPUT"
-
-          if [ "$test_status" -eq 0 ]; then
+          status=$?
+          if [[ $status -eq 0 ]]; then
             exit 0
           fi
 
-          if echo "$test_output" | grep -qiE "no rule to make target"; then
-            run_target ci
-            ci_status=$?
-            ci_output="$MAKE_OUTPUT"
-
-            if [ "$ci_status" -eq 0 ]; then
-              exit 0
-            fi
-
-            if echo "$ci_output" | grep -qiE "no rule to make target"; then
-              echo "No make test/ci target; skipping."
-              exit 0
-            fi
-
-            exit $ci_status
+          if [[ $status -ne 2 ]]; then
+            echo "make test failed with status $status"
+            exit $status
           fi
 
-          exit $test_status
+          run_target ci
+          status=$?
+          if [[ $status -eq 0 ]]; then
+            exit 0
+          fi
+
+          if [[ $status -ne 2 ]]; then
+            echo "make ci failed with status $status"
+            exit $status
+          fi
+
+          echo "Makefile present but no test/ci target; skipping"
+
+  codeql:
+    name: CodeQL
+    if: ${{ needs.prepare.outputs.codeql_enabled == 'true' }}
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ needs.prepare.outputs.codeql_languages }}
+      - uses: github/codeql-action/autobuild@v3
+        continue-on-error: true
+      - uses: github/codeql-action/analyze@v3
+
+  sbom:
+    name: SBOM
+    if: ${{ needs.prepare.outputs.sbom_enabled == 'true' }}
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: anchore/sbom-action/download-syft@v0
+      - name: Generate SBOM (CycloneDX JSON)
+        shell: bash
+        run: syft packages dir:. -o cyclonedx-json=sbom.json
+      - name: Upload SBOM artifact
+        if: ${{ github.event_name == 'workflow_call' || startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.json
