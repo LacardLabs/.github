@@ -1,0 +1,57 @@
+name: "LacardLabs Setup Rust"
+description: "Install/configure Rust toolchain via rustup (org-owned, no third-party actions)"
+author: "LacardLabs"
+inputs:
+  toolchain:
+    description: "Toolchain version (stable | beta | nightly | 1.81.0)"
+    required: false
+    default: "stable"
+  components:
+    description: "Comma or space separated rustup components (e.g., clippy,rustfmt)"
+    required: false
+    default: ""
+  targets:
+    description: "Comma or space separated rustup targets (e.g., wasm32-unknown-unknown)"
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      run: |
+        set -Eeuo pipefail
+
+        echo ">>> Ensure rustup present"
+        if ! command -v rustup >/dev/null 2>&1; then
+          curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain "${{ inputs.toolchain }}"
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+        else
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          rustup self update
+          rustup toolchain install "${{ inputs.toolchain }}" --profile minimal --no-self-update
+        fi
+
+        echo ">>> Choose toolchain"
+        if [[ -f rust-toolchain || -f rust-toolchain.toml ]]; then
+          rustup show active-toolchain || true
+        else
+          rustup override set "${{ inputs.toolchain }}"
+        fi
+
+        norm_list() {
+          echo "$1" | tr ',' ' ' | xargs
+        }
+
+        if [[ -n "${{ inputs.components }}" ]]; then
+          rustup component add $(norm_list "${{ inputs.components }}")
+        fi
+
+        if [[ -n "${{ inputs.targets }}" ]]; then
+          rustup target add $(norm_list "${{ inputs.targets }}")
+        fi
+
+        echo ">>> Versions:"
+        rustup --version
+        rustc --version
+        cargo --version
