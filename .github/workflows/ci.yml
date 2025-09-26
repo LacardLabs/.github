@@ -149,13 +149,21 @@ jobs:
         env:
           CODEQL_INPUT: ${{ steps.config.outputs.codeql }}
           CODEQL_LANGS: ${{ steps.detect.outputs.codeql_languages }}
+          HAS_PYTHON: ${{ steps.detect.outputs.has_python }}
+          HAS_NODE: ${{ steps.detect.outputs.has_node }}
+          HAS_RUST: ${{ steps.detect.outputs.has_rust }}
         run: |
           set -euo pipefail
 
           codeql="$CODEQL_INPUT"
-          if [[ "$codeql" == "true" && "$CODEQL_LANGS" == "cpp" ]]; then
-            echo "CodeQL disabled: rust-only repository detected"
-            codeql="false"
+          if [[ "$codeql" == "true" ]]; then
+            if [[ "$CODEQL_LANGS" == "cpp" ]]; then
+              echo "CodeQL disabled: rust-only repository detected"
+              codeql="false"
+            elif [[ "$HAS_PYTHON" != "1" && "$HAS_NODE" != "1" && "$HAS_RUST" != "1" ]]; then
+              echo "CodeQL disabled: no supported source languages detected"
+              codeql="false"
+            fi
           fi
 
           printf 'codeql=%s\n' "$codeql" >> "$GITHUB_OUTPUT"
