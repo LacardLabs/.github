@@ -7,8 +7,10 @@
 | Name | Type | Default | Description |
 | ---- | ---- | ------- | ----------- |
 | `language` | string | `none` | Optional hint: `python`, `node`, `rust`, or `none`. Auto-detect still runs. |
-| `run_tests` | boolean | `true` | Set `false` for lint-only runs. |
-| `codeql` | boolean | `true` | Enable CodeQL analysis when supported. |
+| `python-version` | string | `3.12` | Python version to install when Python tooling is detected. Leave blank to accept the default. |
+| `node-version` | string | `lts/*` | Node.js version to install when Node tooling is detected. Leave blank to accept the default. |
+| `run_tests` | boolean | `true` | Set `false` to skip test steps while still running lint. |
+| `codeql` | boolean | `true` | Enable CodeQL analysis when supported (automatically disabled for Rust-only projects). |
 | `sbom` | boolean | `false` | Emit a CycloneDX SBOM artifact. |
 
 ## Permissions
@@ -52,5 +54,5 @@ jobs:
 - Python support tests for `requirements.txt`, `pyproject.toml`, or `poetry.lock` before bootstrapping.
 - Node support caches `npm` installs and gracefully skips lint/test when scripts are missing.
 - Rust support assumes a standard Cargo layout and enforces `cargo fmt --check` before running tests.
-- Make fallback (`make test` → `make ci`) only runs when no supported language footprint is detected.
+- Make fallback (`make test` → `make ci`) only runs when no supported language footprint is detected and tests are enabled.
 - SBOM upload only publishes for workflow calls and tag/release events to keep noise low during PR edits.
