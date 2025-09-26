@@ -69,6 +69,7 @@ jobs:
 - Python and Node setup steps honor the `python-version`/`node-version` inputs when provided and fall back to `3.12`/`lts/*` for in-repo push and PR runs.
 - Node support caches `npm` installs and gracefully skips lint/test when scripts are missing.
 - Rust support assumes a standard Cargo layout and enforces `cargo fmt --check` before running tests.
+- Setting `run_tests: false` keeps linting active while skipping the language-specific test invocations and Make fallback.
 - CodeQL skips unsupported Rust analysis: Rust-only repos automatically disable CodeQL, while mixed-language projects filter the Rust footprint from the language list.
 - Make fallback (`make test` → `make ci`) only runs when no supported language footprint is detected and tests are enabled, and it
   captures exit codes so missing targets skip while real failures halt the workflow.
