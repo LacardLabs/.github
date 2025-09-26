@@ -242,7 +242,22 @@ jobs:
       - name: Set up Rust
         id: rust_setup
         if: ${{ needs.prepare.outputs.has_rust == '1' }}
-        uses: dtolnay/rust-toolchain@stable
+        uses: LacardLabs/.github/actions/setup-rust@839ec6c968fb7109fe00e958c65f58c76fefc461
+        with:
+          toolchain: stable
+          components: clippy,rustfmt
+
+      - name: Cache cargo artifacts
+        if: ${{ steps.rust_setup.conclusion == 'success' }}
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
 
       - name: Rust fmt
         if: ${{ steps.rust_setup.conclusion == 'success' }}
