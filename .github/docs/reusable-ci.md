@@ -26,6 +26,19 @@
 3. **codeql** – optional; initializes, autobuilds, analyzes with languages from `prepare` (defaults to Python when no stack detected).
 4. **sbom** – optional; uses Syft to produce `sbom.json` (CycloneDX) and uploads as artifact.
 
+### Prepare job outputs
+
+Downstream jobs consume a handful of signals emitted by the `prepare` job. They are available to callers as `needs.prepare.outputs.*` when overriding the workflow:
+
+| Output | Description |
+| ------ | ----------- |
+| `has_python` / `has_node` / `has_rust` | Language footprints detected in the repository or via the `language` hint. |
+| `python_version` / `node_version` | Resolved toolchain versions, honoring provided inputs and defaulting to Python 3.12 / Node LTS. |
+| `codeql_languages` | Comma-delimited list of languages passed to CodeQL (defaults to `python` when nothing is detected). |
+| `codeql_enabled` | Whether CodeQL analysis will run after applying feature toggles. |
+| `run_tests_enabled` | Indicates if test steps—including the Make fallback—should execute. |
+| `sbom_enabled` | Signals if the SBOM job should run and upload an artifact. |
+
 ## Caller Example
 
 ```yaml
