@@ -18,6 +18,20 @@ This repository holds the shared configuration that keeps the lacard-labs organi
 3. Open a pull request and tag the relevant CODEOWNERS for review.
 4. Note downstream repositories or docs that must be updated alongside your change.
 
+## New Repository Setup
+
+When you create a project with `LacardLabs/repository-template`, walk the checklist below so new repositories match org defaults:
+
+1. In **Settings → General**, update the description and visibility. Skip the "Owning team" field until we actually use GitHub Teams&mdash;CODEOWNERS handles review coverage for solo maintainers.
+2. Clone with `gh repo clone LacardLabs/<repo> ~/GitHub/LacardLabs/<repo>` and verify `pwd` resolves to that path before editing.
+3. In `.github/workflows/ci.yml`, reference `LacardLabs/.github/.github/workflows/ci.yml@main` and set `language:` for your stack. Leave `codeql: false` until the repo ships analyzable source.
+4. Run `pre-commit install` so the shipped whitespace fixer and Ruff hooks run locally prior to each commit.
+5. Decide what to keep from `.pre-commit-config.yaml`, the starter `Makefile`, `.env.example`, and the ADR samples. They ship as ready-to-use defaults&mdash;trim or delete anything you will not maintain.
+6. Confirm `main` branch protection matches org policy (PR review, reusable CI check, squash-only merges, delete-merged-branches). The nightly `docs/org-settings.md` report shows the baseline settings.
+7. Open a quick "smoke" pull request with a trivial change to exercise the reusable CI, then revert the no-op commit if you do not need it afterward.
+
+Automation backstops these steps: the **Org Settings Report** workflow (`.github/workflows/org-settings-report.yml`) refreshes `docs/org-settings.md` on a schedule using `scripts/export_org_settings.py`. Review that file when you need a point-in-time snapshot of org-level protections.
+
 ## Repository Map
 
 | Path | Purpose |
