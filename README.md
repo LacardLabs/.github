@@ -67,7 +67,7 @@ Policies live at the repository root:
 
 ## Local Development Tips
 
+- **Clone repos consistently:** Run `gh repo clone LacardLabs/<repo> ~/GitHub/LacardLabs/<repo>` so local tooling can rely on that path. Double-check with `pwd` before you start editing.
 - **Preview Markdown:** Run `npx markdownlint-cli2 README.md` (or the file you are editing) to catch formatting issues before committing.
 - **Exercise workflows:** Use [`act`](https://github.com/nektos/act) to simulate GitHub Actions locally when you need faster feedback.
 - **Craft commits:** Follow the narrated commit/PR style in `CONTRIBUTING.md`. Reference the issue, summarize the change, and flag next steps.
-
