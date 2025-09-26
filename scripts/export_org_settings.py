@@ -114,7 +114,7 @@ def main():
         "",
         "## Updating this report",
         "",
-        "Run `scripts/export_org_settings.py` locally (requires the GitHub CLI) or allow the scheduled workflow `org-settings-report.yml` to refresh this file nightly.",
+        "Run `scripts/export_org_settings.py` locally (requires the GitHub CLI) or allow the scheduled workflow `org-settings-report.yml` to refresh this file nightly. The workflow authenticates with the `ORG_REPORT_TOKEN` secret (scoped for `read:org` and `admin:org`).",
         "",
     ])
 
