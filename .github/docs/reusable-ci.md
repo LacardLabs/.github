@@ -1,54 +1,55 @@
-# Reusable CI — How we wire it in every repo
+# Reusable CI (workflow_call)
 
-**What this is:** One shared CI workflow in `lacard-labs/.github` that all project repos call.
+**Workflow**: `.github/workflows/ci.yml`
 
-**Why:** Single source of truth for CI. Change it once, every repo benefits.
+## Inputs
 
-## Files
+| Name | Type | Default | Description |
+| ---- | ---- | ------- | ----------- |
+| `language` | string | `none` | Optional hint: `python`, `node`, `rust`, or `none`. Auto-detect still runs. |
+| `run_tests` | boolean | `true` | Set `false` for lint-only runs. |
+| `codeql` | boolean | `true` | Enable CodeQL analysis when supported. |
+| `sbom` | boolean | `false` | Emit a CycloneDX SBOM artifact. |
 
-- **Shared workflow (already in place)**
-  - `lacard-labs/.github/.github/workflows/ci.yml`
-  - Triggers: `workflow_call` + local `push`/`pull_request` so we can test edits here.
+## Permissions
 
-- **Caller workflow (per project)**
-  - Path: `.github/workflows/ci.yml` (in the project repo)
-  - Minimal content:
-    ```yaml
-    name: CI
-    on:
-      pull_request:
-      push:
-        branches: [ main, master ]
-    jobs:
-      ci:
-        uses: lacard-labs/.github/.github/workflows/ci.yml@main
-        secrets: inherit
-        with:
-          node-version: 'lts/*'
-          python-version: '3.x'
-    ```
+- Workflow default: `contents: read`
+- CodeQL job: adds `security-events: write`
+- SBOM job: uses `actions/upload-artifact` only
 
-## How to enable CI in a project (60 seconds)
+## Jobs
 
-1. Create the folder:
-   - `mkdir -p .github/workflows`
-2. Create the caller file shown above.
-3. Commit and push:
-   - `git add .github/workflows/ci.yml`
-   - `git commit -m "ci: use org reusable workflow"`
-   - `git push`
+1. **prepare** – detects Python/Node/Rust footprints and surfaces CodeQL languages.
+2. **lint_test** – installs toolchains conditionally, runs language-specific lint/test, falls back to Make targets when no language detected.
+3. **codeql** – optional; initializes, autobuilds, analyzes with languages from `prepare` (defaults to Python when no stack detected).
+4. **sbom** – optional; uses Syft to produce `sbom.json` (CycloneDX) and uploads as artifact.
+
+## Caller Example
+
+```yaml
+name: CI
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  org-ci:
+    uses: LacardLabs/.github/.github/workflows/ci.yml@main
+    with:
+      language: python
+      run_tests: true
+      codeql: true
+      sbom: false
+    secrets: inherit
+```
 
 ## Notes
 
-- The shared CI automatically scopes language steps:
-  - Python setup runs only when `requirements.txt` or `pyproject.toml` is present. Pytest is executed only if anything exists under `tests/**`.
-  - Node setup runs only when `package.json` exists. The workflow inspects the repo for an `npm test` script and skips the test step when it is missing.
-  - A Makefile fallback runs `make test`, then `make ci` if the test target is absent. Missing targets are treated as skips.
-- For `pyproject.toml`-managed projects the workflow installs your package (preferring the `test` extra via `pip install ".[test]"` when present, otherwise `pip install .`).
-- Declare test extras inside `[project.optional-dependencies]` in `pyproject.toml`, for example:
-  ```toml
-  [project.optional-dependencies]
-  test = ["pytest", "requests"]
-  ```
-- You can override tool versions via the `with:` block in the caller.
-- CODEOWNERS is per-repo; add it to each project where you want enforced reviews.
+- The reusable workflow also triggers on pushes/PRs within this repo so edits can be validated locally.
+- Python support tests for `requirements.txt`, `pyproject.toml`, or `poetry.lock` before bootstrapping.
+- Node support caches `npm` installs and gracefully skips lint/test when scripts are missing.
+- Rust support assumes a standard Cargo layout and enforces `cargo fmt --check` before running tests.
+- Make fallback (`make test` → `make ci`) only runs when no supported language footprint is detected.
+- SBOM upload only publishes for workflow calls and tag/release events to keep noise low during PR edits.
