@@ -293,6 +293,7 @@ jobs:
   sbom:
     name: SBOM
     if: ${{ needs.prepare.outputs.sbom_enabled == 'true' }}
+    needs: prepare
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
