@@ -164,6 +164,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Materialize inventory
+        if: ${{ hashFiles('Makefile') != '' && hashFiles('tools/materialize.py') != '' && hashFiles('tools/validate.py') != '' }}
+        shell: bash
+        run: make materialize
+
+      - name: Validate inventory
+        if: ${{ hashFiles('Makefile') != '' && hashFiles('tools/materialize.py') != '' && hashFiles('tools/validate.py') != '' }}
+        shell: bash
+        run: make validate
+
       - name: Set up Python
         id: python_setup
         if: ${{ needs.prepare.outputs.has_python == '1' }}
