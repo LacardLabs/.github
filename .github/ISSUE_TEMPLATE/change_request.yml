@@ -1,0 +1,40 @@
+name: Change request
+description: Plan any feature, refactor, or chore
+labels: [enhancement]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: What are we changing?
+      placeholder: "One-liner for the outcome or capability."
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why now?
+      placeholder: "Link to context, bug, or decision; call out urgency."
+  - type: textarea
+    id: plan
+    attributes:
+      label: How will we do it?
+      description: Sketch the approach, key steps, or experiments.
+      placeholder: "Bullets are fine."
+  - type: textarea
+    id: done
+    attributes:
+      label: Definition of done
+      placeholder: "What will we demo or verify before closing?"
+  - type: textarea
+    id: followup
+    attributes:
+      label: Follow-ups / Blockers
+      placeholder: "Dependencies, docs to update, review help needed."
+  - type: checkboxes
+    id: tags
+    attributes:
+      label: Type of change
+      options:
+        - label: Feature / new capability
+        - label: Refactor / quality
+        - label: Maintenance / ops
