@@ -19,7 +19,17 @@ jobs:
           GH_TOKEN: ${{ secrets.ORG_REPORT_TOKEN }}
         run: python3 scripts/export_org_settings.py
       - name: Commit report if changed
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "docs: refresh org settings report"
-          file_pattern: docs/org-settings.md
+        shell: bash
+        env:
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: github-actions[bot]@users.noreply.github.com
+        run: |
+          git add docs/org-settings.md
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "docs: refresh org settings report"
+          git push
