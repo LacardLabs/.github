@@ -2,46 +2,52 @@ name: Org Settings Report
 
 on:
   schedule:
-    - cron: '15 5 * * *'
+    - cron: '0 7 * * *'
   workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
   export:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Export org settings
+        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
         # ORG_REPORT_TOKEN must be scoped for read:org and admin:org so gh api calls succeed.
         env:
           GH_TOKEN: ${{ secrets.ORG_REPORT_TOKEN }}
         run: python3 scripts/export_org_settings.py
-      - name: Commit report if changed
-        shell: bash
+      - name: Create pull request when changes detected
+        if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
         env:
-          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          GH_TOKEN: ${{ secrets.ORG_REPORT_TOKEN }}
           GIT_AUTHOR_NAME: github-actions[bot]
           GIT_AUTHOR_EMAIL: github-actions[bot]@users.noreply.github.com
-          GIT_COMMITTER_NAME: github-actions[bot]
-          GIT_COMMITTER_EMAIL: github-actions[bot]@users.noreply.github.com
         run: |
-          set -euo pipefail
-
-          branch="${GITHUB_REF_NAME:-${DEFAULT_BRANCH:-main}}"
-
-          git config user.name "$GIT_COMMITTER_NAME"
-          git config user.email "$GIT_COMMITTER_EMAIL"
-
-          git fetch origin "$branch"
-          git checkout "$branch"
-          git pull --ff-only origin "$branch"
-
-          git add docs/org-settings.md
-          if git diff --cached --quiet; then
-            echo "No changes to commit."
+          if git diff --quiet -- docs/org-settings.md; then
+            echo "No changes to create pull request for."
             exit 0
           fi
+
+          branch="chore/org-settings-report-$(date -u +%Y%m%d%H%M%S)"
+          git config user.name "$GIT_AUTHOR_NAME"
+          git config user.email "$GIT_AUTHOR_EMAIL"
+          git checkout -b "$branch"
+          git add docs/org-settings.md
           git commit -m "docs: refresh org settings report"
-          git push origin "HEAD:$branch"
+          git push origin "$branch"
+
+          gh pr create \
+            --base main \
+            --head "$branch" \
+            --title "docs: refresh org settings report" \
+            --body "Automated export of org settings."
