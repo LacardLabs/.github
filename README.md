@@ -1,3 +1,7 @@
+# THIS IS A SPECIAL REPOSITORY
+
+**IMPORTANT**: THIS REPOSITORY IS NAMED `.github` aAND ALSO HAS A TOP-LEVEL, ROOT DIRECTORY NAMED `.github` --- THIS IS NOT AN ERROR. DO NOT BE CONFUSED.
+
 # LacardLabs/.github Handbook
 
 This repository holds the shared configuration that keeps the lacard-labs organization consistent across projects. Start here when you need to adjust community-facing content, automation, or policies.
