@@ -1,8 +1,8 @@
 # Security Policy
 
-**Report a vulnerability**
-- Email: security@lacard.ca (or sarahlacard@gmail.com)
-- Include reproduction steps and impact notes.
-- We aim to acknowledge within 72 hours.
+**Reporting a vulnerability**
+- Email: sarahlacard@gmail.com
+- Include reproduction steps and vulnerability description.
+- Please provide 5 business days before republishing.
 
-Please do not open public issues for sensitive reports.
+Do not open public issues for sensitive reports.

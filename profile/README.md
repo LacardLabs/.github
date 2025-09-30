@@ -8,11 +8,10 @@
 - **Underlabs dashboard** – Colourful login experience that greets each operator by lab name, surfaces local horsepower, and reveals the collective heartbeat of the fleet.
 - **Shared rituals** – Rotating tips, agent wisdom (starting with *ladygenesis*), and gentle prompts that help newcomers contribute faster every day.
 
-## Join the lab
+## Join the lab (not yet, but soonTM)
 
-1. Install: `pipx install lacardlabs` (or clone the repo and `pip install -e .[dev]`).
+1. Install: `pipx install lacardlabs`.
 2. Explore: `lacard help`, `lacard manual`, `lacard quickstart`.
-3. Enrol: `lacard join as user` to build your first lab, name your garden or tower, and meet the Underlabs banner.
 
 ## Ways to contribute
 
@@ -21,4 +20,4 @@
 - Help expand [status.lacard.ca](https://status.lacard.ca) so every login reflects the health of the fleet.
 - Propose new rituals or tooling in the discussions board—sign-offs welcome from every nameless Lacard.
 
-The Underlabs are here for operators young, seasoned, and yet to arrive. Open a shell, say hello, and build with us.
+The Underlabs are here for operators young, seasoned, and yet to arrive. Open a shell, say hello, and build with us <3
