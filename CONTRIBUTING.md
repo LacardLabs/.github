@@ -1,6 +1,6 @@
 # Contributing
 
-**Branch ---> Pull Request ---> Code Review ---> Squash and Merge**.
+**Branch → Pull Request → Code Review → Squash and Merge**.
 
 ## Workflow
 All repositories start from the template on GitHub.
