@@ -5,6 +5,8 @@
 
 THIS IS NOT AN ERROR. DO NOT BE CONFUSED.
 
+THIS RESPOSITORY IS REQUIRED FOR GITHUB ORGANIZATIONS
+
 # LacardLabs/.github Handbook
 
 This repository holds the shared configuration that keeps the lacard-labs organization consistent across projects. Start here when you need to adjust community-facing content, automation, or policies.
