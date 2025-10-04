@@ -69,20 +69,68 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [[ "${GITHUB_EVENT_NAME}" == "workflow_call" ]]; then
-            language=$(jq -r '.inputs.language // "none"' "$GITHUB_EVENT_PATH")
-            run_tests=$(jq -r '.inputs.run_tests // "true"' "$GITHUB_EVENT_PATH")
-            codeql=$(jq -r '.inputs.codeql // "true"' "$GITHUB_EVENT_PATH")
-            sbom=$(jq -r '.inputs.sbom // "false"' "$GITHUB_EVENT_PATH")
+          if [[ -n "${INPUT_LANGUAGE:-}" ]]; then
+            language="$INPUT_LANGUAGE"
+          elif [[ "${GITHUB_EVENT_NAME}" == "workflow_call" ]]; then
+            language=$(jq -r '.inputs.language // ""' "$GITHUB_EVENT_PATH")
+          else
+            language=""
+          fi
+
+          if [[ -n "${INPUT_RUN_TESTS:-}" ]]; then
+            run_tests="$INPUT_RUN_TESTS"
+          elif [[ "${GITHUB_EVENT_NAME}" == "workflow_call" ]]; then
+            run_tests=$(jq -r '.inputs.run_tests // ""' "$GITHUB_EVENT_PATH")
+          else
+            run_tests=""
+          fi
+
+          if [[ -n "${INPUT_CODEQL:-}" ]]; then
+            codeql="$INPUT_CODEQL"
+          elif [[ "${GITHUB_EVENT_NAME}" == "workflow_call" ]]; then
+            codeql=$(jq -r '.inputs.codeql // ""' "$GITHUB_EVENT_PATH")
+          else
+            codeql=""
+          fi
+
+          if [[ -n "${INPUT_SBOM:-}" ]]; then
+            sbom="$INPUT_SBOM"
+          elif [[ "${GITHUB_EVENT_NAME}" == "workflow_call" ]]; then
+            sbom=$(jq -r '.inputs.sbom // ""' "$GITHUB_EVENT_PATH")
+          else
+            sbom=""
+          fi
+
+          if [[ -n "${INPUT_PYTHON_VERSION:-}" ]]; then
+            python_version="$INPUT_PYTHON_VERSION"
+          elif [[ "${GITHUB_EVENT_NAME}" == "workflow_call" ]]; then
             python_version=$(jq -r '.inputs["python-version"] // ""' "$GITHUB_EVENT_PATH")
+          else
+            python_version=""
+          fi
+
+          if [[ -n "${INPUT_NODE_VERSION:-}" ]]; then
+            node_version="$INPUT_NODE_VERSION"
+          elif [[ "${GITHUB_EVENT_NAME}" == "workflow_call" ]]; then
             node_version=$(jq -r '.inputs["node-version"] // ""' "$GITHUB_EVENT_PATH")
           else
-            language="none"
-            run_tests="true"
-            codeql="true"
-            sbom="false"
-            python_version=""
             node_version=""
+          fi
+
+          if [[ -z "$language" ]]; then
+            language="none"
+          fi
+
+          if [[ -z "$run_tests" ]]; then
+            run_tests="true"
+          fi
+
+          if [[ -z "$codeql" ]]; then
+            codeql="true"
+          fi
+
+          if [[ -z "$sbom" ]]; then
+            sbom="false"
           fi
 
           if [[ -z "$python_version" ]]; then
